@@ -1,8 +1,49 @@
-# 🤖 AI SEO Audit
+# 🤖 AI SEO Audit — v2
 
-> **Service d'audit et d'optimisation de la visibilité des entreprises dans les réponses des intelligences artificielles**
+> **Pipeline B2B de prospection IA-visibilité + Outil d'audit client**
 
-Détecte comment votre entreprise apparaît dans les réponses de ChatGPT, Claude, Gemini et autres IA, puis génère des recommandations concrètes pour améliorer votre positionnement.
+Deux modules en un :
+1. **B2B Pipeline** — Prospection automatisée : identifier les entreprises locales invisibles dans les réponses IA → générer audits + landing pages personnalisées + email drafts → file READY_TO_SEND manuelle
+2. **B2C Audit** — Outil client-facing : formulaire d'audit, score de visibilité, recommandations
+
+---
+
+## 🏗️ Architecture B2B Pipeline
+
+```
+city + profession + max_prospects
+        │
+        ▼
+POST /api/prospect-scan          → ProspectRecord[] (SCANNED → SCHEDULED)
+        │
+        ▼ (scheduler: Mer/Ven/Dim 09:00/13:00/20:30 Rome)
+POST /api/ia-test/run            → TestRun × 3 modèles × 5 requêtes (TESTING → TESTED)
+        │
+        ▼
+POST /api/scoring/run            → Score /10 + EMAIL_OK gate (TESTED → SCORED)
+        │
+        ▼
+POST /api/prospect/{id}/assets   → video_url + screenshot_url (SCORED → READY_ASSETS)
+        │
+        ▼ (lundi 09:00 Rome — scheduler)
+POST /api/prospect/{id}/mark-ready → Gate stricte → READY_TO_SEND
+        │
+        ▼
+POST /api/generate/campaign      → audit.html + email.json + video_script.txt + CSV SendQueue
+        │
+        ▼ [MANUEL] Nathalie envoie depuis SendQueue
+```
+
+### Statuts imposés
+`SCANNED → SCHEDULED → TESTING → TESTED → SCORED → READY_ASSETS → READY_TO_SEND → SENT_MANUAL`
+
+### Règle EMAIL_OK
+- Prospect JAMAIS cité sur **au moins 2/3 modèles** (OpenAI/Anthropic/Gemini)
+- Prospect JAMAIS cité sur **au moins 4/5 requêtes**
+- **Au moins 1 concurrent stable** cité dans ≥ 2 runs
+- Gate : aucun email sans `video_url` + `screenshot_url`
+
+---
 
 ---
 
