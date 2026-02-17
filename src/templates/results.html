@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Résultats Audit - {{ audit.company_name }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <h1>🤖 AI SEO Audit</h1>
+            <p>Résultats pour <strong>{{ audit.company_name }}</strong></p>
+        </div>
+    </header>
+
+    {% if audit.status in ['pending', 'processing'] %}
+    <!-- Loading State -->
+    <section class="loading">
+        <div class="container">
+            <div class="spinner"></div>
+            <h2>Analyse en cours...</h2>
+            <p id="currentStep">{{ audit.current_step or 'Initialisation' }}</p>
+            <p>Progression: <strong id="progress">{{ audit.progress or 0 }}%</strong></p>
+        </div>
+    </section>
+
+    <script>
+        // Auto-reload when audit completes
+        waitForAuditCompletion('{{ audit.audit_id }}');
+    </script>
+
+    {% elif audit.status == 'failed' %}
+    <!-- Error State -->
+    <section style="padding: 80px 20px; text-align: center;">
+        <div class="container">
+            <h2 style="color: var(--danger);">❌ L'audit a échoué</h2>
+            <p>{{ audit.error_message or 'Une erreur est survenue. Veuillez réessayer.' }}</p>
+            <a href="/" class="btn" style="margin-top: 30px;">Recommencer</a>
+        </div>
+    </section>
+
+    {% elif audit.status == 'completed' %}
+    <!-- Results -->
+    <section style="padding: 60px 20px; background: var(--bg);">
+        <div class="container">
+            <!-- Score Card -->
+            <div class="score-card">
+                <h2 style="margin-bottom: 30px;">Votre Score de Visibilité IA</h2>
+                <div id="scoreGauge"></div>
+                <p style="margin-top: 20px; font-size: 18px; color: var(--text-light);">
+                    Basé sur {{ audit.queries_count }} requêtes dans le secteur <strong>{{ audit.sector }}</strong>
+                </p>
+            </div>
+
+            <!-- Results Grid -->
+            <div class="results-grid">
+                <div class="result-card">
+                    <h3>📊 Mentions trouvées</h3>
+                    <div class="number">{{ audit.results.total_mentions or 0 }}</div>
+                    <p>Fois où votre entreprise apparaît dans les réponses</p>
+                </div>
+
+                <div class="result-card">
+                    <h3>🎯 Position moyenne</h3>
+                    <div class="number">{{ audit.results.avg_position or 'N/A' }}</div>
+                    <p>Dans les listes de recommandations</p>
+                </div>
+
+                <div class="result-card">
+                    <h3>🏆 Concurrents identifiés</h3>
+                    <div class="number">{{ audit.results.competitors|length }}</div>
+                    <p>Entreprises citées plus souvent que vous</p>
+                </div>
+            </div>
+
+            <!-- Competitors -->
+            {% if audit.results.competitors %}
+            <div style="margin-top: 60px;">
+                <h2 style="margin-bottom: 30px;">🏆 Concurrence directe</h2>
+                {% for competitor in audit.results.competitors[:5] %}
+                <div class="recommendation">
+                    <h4>{{ competitor.name }}</h4>
+                    <p><strong>{{ competitor.mention_count }}</strong> mentions | Position moyenne: <strong>{{ competitor.avg_position }}</strong></p>
+                    {% if competitor.strengths %}
+                    <p style="margin-top: 10px; color: var(--text-light);">
+                        <strong>Points forts:</strong> {{ competitor.strengths|join(', ') }}
+                    </p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Gaps -->
+            {% if audit.results.gaps %}
+            <div style="margin-top: 60px;">
+                <h2 style="margin-bottom: 30px;">🎯 Opportunités d'amélioration</h2>
+                {% for gap in audit.results.gaps %}
+                <div class="recommendation">
+                    <span class="priority priority-{{ gap.priority }}">Priorité {{ gap.priority }}</span>
+                    <span class="impact impact-{{ gap.impact }}">Impact {{ gap.impact }}</span>
+                    <h4 style="margin-top: 10px;">{{ gap.gap_type|upper }}</h4>
+                    <p>{{ gap.description }}</p>
+                    {% if gap.affected_queries %}
+                    <p style="margin-top: 10px; font-size: 14px; color: var(--text-light);">
+                        <strong>Requêtes concernées:</strong> {{ gap.affected_queries|join(', ') }}
+                    </p>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Recommendations -->
+            {% if audit.results.recommendations %}
+            <div style="margin-top: 60px;">
+                <h2 style="margin-bottom: 30px;">💡 Recommandations personnalisées</h2>
+                {% for rec in audit.results.recommendations %}
+                <div class="recommendation">
+                    <span class="priority priority-{{ rec.priority }}">Priorité {{ rec.priority }}</span>
+                    <span class="impact impact-{{ rec.impact }}">Impact {{ rec.impact }}</span>
+                    <h4 style="margin-top: 10px;">{{ rec.title }}</h4>
+                    <p>{{ rec.description }}</p>
+
+                    {% if rec.implementation_guide %}
+                    <details style="margin-top: 15px;">
+                        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">📖 Guide d'implémentation</summary>
+                        <div style="margin-top: 10px; padding: 15px; background: var(--bg); border-radius: 6px;">
+                            <pre style="white-space: pre-wrap; font-size: 14px;">{{ rec.implementation_guide }}</pre>
+                        </div>
+                    </details>
+                    {% endif %}
+
+                    {% if rec.example_content %}
+                    <details style="margin-top: 10px;">
+                        <summary style="cursor: pointer; font-weight: 600; color: var(--primary);">✨ Exemple de contenu optimisé</summary>
+                        <div style="margin-top: 10px; padding: 15px; background: var(--bg); border-radius: 6px;">
+                            <pre style="white-space: pre-wrap; font-size: 14px;">{{ rec.example_content }}</pre>
+                        </div>
+                    </details>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Upgrade CTA (if freemium) -->
+            {% if audit.plan == 'freemium' %}
+            <div style="margin-top: 80px; text-align: center; padding: 60px 40px; background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); border-radius: 12px; color: white;">
+                <h2 style="color: white; margin-bottom: 20px;">🚀 Débloquez l'analyse complète</h2>
+                <p style="font-size: 18px; margin-bottom: 30px; opacity: 0.95;">
+                    Obtenez 10 à 20 requêtes supplémentaires, des recommandations détaillées et un guide PDF complet
+                </p>
+                <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;">
+                    <a href="#" onclick="upgradeAudit('{{ audit.audit_id }}', 'starter'); return false;" class="btn btn-secondary">
+                        Passer à Starter - 49€
+                    </a>
+                    <a href="#" onclick="upgradeAudit('{{ audit.audit_id }}', 'pro'); return false;" class="btn btn-secondary">
+                        Passer à Pro - 149€
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Export Buttons -->
+            {% if audit.plan in ['starter', 'pro'] %}
+            <div style="margin-top: 60px; text-align: center;">
+                <h2 style="margin-bottom: 30px;">📥 Téléchargez vos livrables</h2>
+                <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;">
+                    <a href="/api/export/{{ audit.audit_id }}/guide.pdf" class="btn">
+                        📄 Guide PDF
+                    </a>
+                    <a href="/api/export/{{ audit.audit_id }}/recommendations.json" class="btn btn-secondary">
+                        📊 Données JSON
+                    </a>
+                    {% if audit.plan == 'pro' %}
+                    <a href="/api/export/{{ audit.audit_id }}/mockups.zip" class="btn">
+                        🎨 Maquettes HTML
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <script>
+        // Render score gauge
+        {% if audit.results.get('score') %}
+        const scoreData = {{ audit.results.score|tojson }};
+        document.getElementById('scoreGauge').innerHTML = renderScoreGauge(scoreData);
+        {% endif %}
+
+        // Upgrade function
+        async function upgradeAudit(auditId, plan) {
+            try {
+                const checkout = await createCheckout(auditId, plan);
+                if (checkout.checkout_url) {
+                    window.location.href = checkout.checkout_url;
+                }
+            } catch (error) {
+                alert('Erreur: ' + error.message);
+            }
+        }
+    </script>
+    {% endif %}
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
